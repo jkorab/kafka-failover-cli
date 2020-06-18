@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 	description = "Modifies the replication characteristics of a set of topics to enable failover in a Kafka cluster")
 class KafkaFailover implements Callable<Integer> {
 
-	public static final String MIN_INSYNC_REPLICAS = "min.insync.replicas";
+	private static final String MIN_INSYNC_REPLICAS = "min.insync.replicas";
 	private Logger log = LoggerFactory.getLogger(this.getClass());
 
 	@CommandLine.Option(names = {"-b"}, description = "Bootstrap servers", required = true)
@@ -29,12 +29,12 @@ class KafkaFailover implements Callable<Integer> {
 	@CommandLine.Option(names = {"-f", "--future-isr"}, description = "Future min.insync.replicas", required = true)
 	private Integer futureIsr;
 
-	public static int main(String[] args) {
+	static int main(String[] args) {
 		return new CommandLine(new KafkaFailover()).execute(args);
 	}
 
 	@Override
-	public Integer call() throws Exception {
+	public Integer call() {
 		var adminClient = KafkaAdminClient.create(
 				Collections.singletonMap("bootstrap.servers", bootstrapServers));
 		log.info("Listing topics");
