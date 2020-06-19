@@ -10,6 +10,6 @@ class KafkaFailoverTest {
 
     @Test
     void testCliWorks() {
-        assertNotEquals(0, KafkaFailover.main(new String[0]));
+        assertNotEquals(0, KafkaFailover.execute(new String[0]));
     }
 }
