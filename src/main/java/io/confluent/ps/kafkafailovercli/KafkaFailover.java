@@ -1,14 +1,13 @@
 package io.confluent.ps.kafkafailovercli;
 
-import org.apache.kafka.clients.admin.AlterConfigOp;
-import org.apache.kafka.clients.admin.ConfigEntry;
-import org.apache.kafka.clients.admin.KafkaAdminClient;
-import org.apache.kafka.clients.admin.TopicListing;
+import org.apache.kafka.clients.admin.*;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.config.ConfigResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -27,7 +26,7 @@ public class KafkaFailover implements Callable<Integer> {
     private static final String MIN_INSYNC_REPLICAS = "min.insync.replicas";
     private Logger log = LoggerFactory.getLogger(this.getClass());
 
-    @CommandLine.Option(names = {"-b"}, description = "Bootstrap servers", required = true)
+    @CommandLine.Option(names = {"-b", "--bootstrap-server"}, description = "Bootstrap servers", required = true)
     private String bootstrapServers;
 
     @CommandLine.Option(names = {"-c", "--current-isr"}, description = "Current min.insync.replicas", required = true)
@@ -39,6 +38,10 @@ public class KafkaFailover implements Callable<Integer> {
     @CommandLine.Option(names = {"-t", "--topics"}, description = "Regex of topic names to match against")
     private String topicsMask;
 
+    @CommandLine.Option(names = {"--config-file"},
+            description = "If provided, content will be added to the properties")
+    protected String configFile = null;
+
     public static void main(String[] args) {
         System.exit(execute(args));
     }
@@ -47,10 +50,35 @@ public class KafkaFailover implements Callable<Integer> {
         return new CommandLine(new KafkaFailover()).execute(args);
     }
 
+    public static void readConfigFile(Properties properties, String configFile) {
+        if (configFile != null) {
+            try (InputStream inputStream = new FileInputStream(configFile)) {
+                Reader reader = new InputStreamReader(inputStream);
+
+                properties.load(reader);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+                System.err.println("Inputfile " + configFile + " not found");
+                System.exit(1);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private AdminClient createAdminClient() {
+        Properties properties = new Properties();
+        properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+
+        readConfigFile(properties, configFile);
+
+        return KafkaAdminClient.create(properties);
+    }
+
     @Override
     public Integer call() throws ExecutionException, InterruptedException {
-        var adminClient = KafkaAdminClient.create(
-                Collections.singletonMap("bootstrap.servers", bootstrapServers));
+        var adminClient = createAdminClient();
+
         log.info("Listing topics");
         var listTopicsResult = adminClient.listTopics();
         var topicListings = listTopicsResult.listings().get();
@@ -104,6 +132,8 @@ public class KafkaFailover implements Callable<Integer> {
         log.info("Performing incremental alter configs");
         adminClient.incrementalAlterConfigs(configs).all().get();
         log.info("Alter operation complete");
+
+        adminClient.close();
 
         return 0;
     }
