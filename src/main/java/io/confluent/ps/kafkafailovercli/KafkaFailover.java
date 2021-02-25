@@ -133,6 +133,8 @@ public class KafkaFailover implements Callable<Integer> {
         adminClient.incrementalAlterConfigs(configs).all().get();
         log.info("Alter operation complete");
 
+        adminClient.close();
+
         return 0;
     }
 
