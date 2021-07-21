@@ -9,6 +9,8 @@ Command line tool for changing `min.insync.replicas` for a set of topics.
       -b=<bootstrapServers>    Bootstrap servers
       -c, --current-isr=<currentIsr>
                                Current min.insync.replicas
+      --config-file=<configFile>
+                  If provided, content will be added to the properties (for example for security settings)
       -f, --future-isr=<futureIsr>
                                Future min.insync.replicas
       -h, --help               Show this help message and exit.
